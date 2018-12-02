@@ -1,0 +1,87 @@
+[{
+  "faceRectangle": {
+    "top": 31,
+    "left": 102,
+    "width": 64,
+    "height": 64
+  },
+  "faceAttributes": {
+    "makeup": {
+      "eyeMakeup": true,
+      "lipMakeup": true
+    },
+    "facialHair": {
+      "sideburns": 0,
+      "beard": 0,
+      "moustache": 0
+    },
+    "gender": "female",
+    "accessories": [],
+    "blur": {
+      "blurLevel": "medium",
+      "value": 0.35
+    },
+    "headPose": {
+      "roll": -7.3,
+      "pitch": 0,
+      "yaw": -4.7
+    },
+    "smile": 1,
+    "glasses": "NoGlasses",
+    "hair": {
+      "bald": 0.08,
+      "invisible": false,
+      "hairColor": [
+        {
+          "color": "brown",
+          "confidence": 0.99
+        },
+        {
+          "color": "black",
+          "confidence": 0.97
+        },
+        {
+          "color": "gray",
+          "confidence": 0.23
+        },
+        {
+          "color": "other",
+          "confidence": 0.16
+        },
+        {
+          "color": "red",
+          "confidence": 0.15
+        },
+        {
+          "color": "blond",
+          "confidence": 0.03
+        }
+      ]
+    },
+    "emotion": {
+      "contempt": 0,
+      "surprise": 0,
+      "happiness": 1,
+      "neutral": 0,
+      "sadness": 0,
+      "disgust": 0,
+      "anger": 0,
+      "fear": 0
+    },
+    "exposure": {
+      "value": 0.43,
+      "exposureLevel": "goodExposure"
+    },
+    "occlusion": {
+      "eyeOccluded": false,
+      "mouthOccluded": false,
+      "foreheadOccluded": false
+    },
+    "noise": {
+      "noiseLevel": "low",
+      "value": 0.04
+    },
+    "age": 27
+  },
+  "faceId": "eba5516b-9eec-4722-b3f8-4a488c1a5123"
+}]
