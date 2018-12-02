@@ -1,5 +1,6 @@
 package me.ltxom.facerec.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import me.ltxom.facerec.service.SourceImageService;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -19,20 +20,21 @@ public class WebController {
    private SourceImageService sourceImageService;
 
    @PostMapping(value = "/student")
-   public String uploadStudent(@RequestParam String name,
+   public String uploadStudent(@RequestParam("callback") String jsonpCallback,
+                               @RequestParam String name,
                                @RequestParam() MultipartFile mFile) {
       File file = sourceImageService.convertAndSave(mFile,
-              "img/source/" + name + "." + mFile.getContentType().split("/")[1]);
+              "img/source/" + name + ".jpg");
       sourceImageService.saveFileToOSS(file);
       JSONArray jsonArray = sourceImageService.getSourceImageInfo("https://facerec" +
               ".oss-us-west-1.aliyuncs.com/" + file.getName());
-      sourceImageService.saveFaceImgInfo(jsonArray, name + ".jpg", true);
+      sourceImageService.saveFaceImgInfo(jsonArray, name + ".jpg", true, true);
 
-      return jsonArray.toString(2);
+      return convertToJsonP(jsonArray.toString(2), jsonpCallback);
    }
 
    @GetMapping(value = "/students")
-   public String getStudents() {
+   public String getStudents(@RequestParam("callback") String jsonpCallback) {
       JSONArray jsonArray = new JSONArray();
       Map<String, String> map = sourceImageService.getFaceIdToNameMap(true);
       int id = 0;
@@ -43,18 +45,19 @@ public class WebController {
          jsonObject.put("url", map.get(key));
          jsonArray.put(jsonObject);
       }
-      return jsonArray.toString(2);
+      return convertToJsonP(jsonArray.toString(2), jsonpCallback);
    }
 
    @PostMapping(value = "/auto-update")
-   public String checkFaces(@RequestParam() MultipartFile mFile) {
+   public String checkFaces(@RequestParam("callback") String jsonpCallback,
+                            @RequestParam() MultipartFile mFile) {
       File file = sourceImageService.convertAndSave(mFile,
               "img/" + "checkData.jpg");
       sourceImageService.saveFileToOSS(file);
 
       JSONArray jsonArray = sourceImageService.getSourceImageInfo("https://facerec" +
               ".oss-us-west-1.aliyuncs.com/" + file.getName());
-      sourceImageService.saveFaceImgInfo(jsonArray, "checkData.jpg", false);
+      sourceImageService.saveFaceImgInfo(jsonArray, "checkData.jpg", false, true);
 
       Map<String, Boolean> map = sourceImageService.checkAttendance();
 
@@ -66,7 +69,8 @@ public class WebController {
       for (String key : map.keySet()) {
          JSONObject tempObj = new JSONObject();
          tempObj.put("name", key.split("\\.")[0]);
-         tempObj.put("attendance", map.get(key));
+         tempObj.put("imageLink",
+                 "https://facerec" + ".oss-us-west-1.aliyuncs.com/" + key);
          if (map.get(key)) {
             presentArr.put(tempObj);
          } else {
@@ -78,11 +82,11 @@ public class WebController {
       resultObj.put("absent", absentArr);
       resultObj.put("rendered-photo", "https://facerec" +
               ".oss-us-west-1.aliyuncs.com/" + "renderedData.jpg");
-      return resultObj.toString(2);
+      return convertToJsonP(resultObj.toString(2), jsonpCallback);
    }
 
    @GetMapping(value = "/attendance")
-   public String getAttendance() {
+   public String getAttendance(@RequestParam("callback") String jsonpCallback) {
       Map<String, Boolean> map = sourceImageService.getResultMap();
       JSONObject resultObj = new JSONObject();
 
@@ -92,7 +96,10 @@ public class WebController {
       for (String key : map.keySet()) {
          JSONObject tempObj = new JSONObject();
          tempObj.put("name", key.split("\\.")[0]);
-         tempObj.put("attendance", map.get(key));
+         {
+         }
+         tempObj.put("imageLink",
+                 "https://facerec" + ".oss-us-west-1.aliyuncs.com/" + key);
          if (map.get(key)) {
             presentArr.put(tempObj);
          } else {
@@ -104,11 +111,12 @@ public class WebController {
       resultObj.put("absent", absentArr);
       resultObj.put("rendered-photo", "https://facerec" +
               ".oss-us-west-1.aliyuncs.com/" + "renderedData.jpg");
-      return resultObj.toString(2);
+      return convertToJsonP(resultObj.toString(2), jsonpCallback);
    }
 
    @RequestMapping(value = "/attendance")
-   public String setAttendance(@RequestParam String name, @RequestParam Boolean flag) {
+   public String setAttendance(@RequestParam("callback") String jsonpCallback,
+                               @RequestParam String name, @RequestParam Boolean flag) {
       Map<String, Boolean> map = sourceImageService.getResultMap();
 
       if (map.containsKey(name)) {
@@ -125,10 +133,26 @@ public class WebController {
          } catch (FileNotFoundException e) {
             e.printStackTrace();
          }
-         return "修改成功";
+         return convertToJsonP("修改成功", jsonpCallback);
       } else {
-         return "名称不存在！请先录入.";
+         return convertToJsonP("名称不存在！请先录入.", jsonpCallback);
       }
 
+   }
+
+
+   private String convertToJsonP(Object o, String jsonpCallback) {
+      String outputmessage = null;
+      ObjectMapper mapper = new ObjectMapper();
+      try {
+         outputmessage = mapper.writeValueAsString(o);
+      } catch (Exception e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      }
+      if (outputmessage != null) {
+         outputmessage = jsonpCallback + "(" + outputmessage + ")";
+      }
+      return outputmessage;
    }
 }

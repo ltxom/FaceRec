@@ -19,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
 import java.util.*;
 
 @Service
@@ -98,7 +97,8 @@ public class SourceImageService {
       return null;
    }
 
-   public void saveFaceImgInfo(JSONArray jsonArray, String fileName, boolean isSource) {
+   public void saveFaceImgInfo(JSONArray jsonArray, String fileName, boolean isSource,
+                               boolean normalFlag) {
       if (jsonArray != null)
          try {
             File file = null;
@@ -112,13 +112,15 @@ public class SourceImageService {
             printWriter.print(jsonArray.toString(2));
             printWriter.close();
 
-            Map<String, String> map = new HashMap<>();
-            for (int i = 0; i < jsonArray.length(); i++) {
-               map.put(jsonArray.getJSONObject(i).get("faceId").toString(),
-                       fileName
-               );
+            if (normalFlag) {
+               Map<String, String> map = new HashMap<>();
+               for (int i = 0; i < jsonArray.length(); i++) {
+                  map.put(jsonArray.getJSONObject(i).get("faceId").toString(),
+                          fileName
+                  );
+               }
+               appendFaceIdToNameMap(map, isSource);
             }
-            appendFaceIdToNameMap(map, isSource);
 
          } catch (IOException e) {
             e.printStackTrace();
@@ -205,6 +207,8 @@ public class SourceImageService {
       String uriBase =
               "https://westcentralus.api.cognitive.microsoft.com/face/v1.0/findsimilars";
 
+      JSONArray localArray = new JSONArray();
+
       for (String attendanceKey : attendanceMap.keySet()) {
          HttpClient httpclient = new DefaultHttpClient();
 
@@ -235,10 +239,11 @@ public class SourceImageService {
                String jsonString = EntityUtils.toString(entity).trim();
                if (jsonString.charAt(0) == '[') {
                   JSONArray jsonArray = new JSONArray(jsonString);
+                  localArray.put(jsonArray);
                   if (jsonArray.length() > 0)
                      if ((Double) jsonArray.getJSONObject(0).get("confidence") > FacerecApplication.CONFIDENCE) {
                         resultMap.put(sourceMap.get((String) jsonArray.getJSONObject(0).get(
-                                "faceId")).split("\\.")[0], true);
+                                "faceId")), true);
                      }
                } else if (jsonString.charAt(0) == '{') {
                   jsonObject = new JSONObject(jsonString);
@@ -256,14 +261,15 @@ public class SourceImageService {
       }
 
       for (String sourceFaceName : sourceMap.values()) {
-         sourceFaceName = sourceFaceName.split("\\.")[0];
+         sourceFaceName = sourceFaceName;
          if (!resultMap.containsKey(sourceFaceName))
             resultMap.put(sourceFaceName, false);
       }
 
       PrintWriter printWriter = null;
       try {
-         printWriter = new PrintWriter(new FileOutputStream(new File("data/result.properties")));
+         printWriter = new PrintWriter(new FileOutputStream(new File("data/result" +
+                 ".properties")));
          for (String key : resultMap.keySet()) {
             printWriter.println(key + "=" + resultMap.get(key));
          }
@@ -272,6 +278,8 @@ public class SourceImageService {
       } catch (FileNotFoundException e) {
          e.printStackTrace();
       }
+
+      saveFaceImgInfo(localArray, "result", false, false);
 
       return resultMap;
    }
