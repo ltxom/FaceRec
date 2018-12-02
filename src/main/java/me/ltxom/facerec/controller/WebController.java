@@ -4,13 +4,13 @@ import me.ltxom.facerec.service.SourceImageService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
 import java.util.Map;
 
 @RestController
@@ -56,15 +56,79 @@ public class WebController {
               ".oss-us-west-1.aliyuncs.com/" + file.getName());
       sourceImageService.saveFaceImgInfo(jsonArray, "checkData.jpg", false);
 
-      JSONArray resultArray = new JSONArray();
       Map<String, Boolean> map = sourceImageService.checkAttendance();
 
+      JSONObject resultObj = new JSONObject();
+
+      JSONArray presentArr = new JSONArray();
+      JSONArray absentArr = new JSONArray();
+
       for (String key : map.keySet()) {
-         JSONObject jsonObject = new JSONObject();
-         jsonObject.put("name", key.split("\\.")[0]);
-         jsonObject.put("attendance", map.get(key));
-         resultArray.put(jsonObject);
+         JSONObject tempObj = new JSONObject();
+         tempObj.put("name", key.split("\\.")[0]);
+         tempObj.put("attendance", map.get(key));
+         if (map.get(key)) {
+            presentArr.put(tempObj);
+         } else {
+            absentArr.put(tempObj);
+         }
       }
-      return resultArray.toString(2);
+
+      resultObj.put("present", presentArr);
+      resultObj.put("absent", absentArr);
+      resultObj.put("rendered-photo", "https://facerec" +
+              ".oss-us-west-1.aliyuncs.com/" + "renderedData.jpg");
+      return resultObj.toString(2);
+   }
+
+   @GetMapping(value = "/attendance")
+   public String getAttendance() {
+      Map<String, Boolean> map = sourceImageService.getResultMap();
+      JSONObject resultObj = new JSONObject();
+
+      JSONArray presentArr = new JSONArray();
+      JSONArray absentArr = new JSONArray();
+
+      for (String key : map.keySet()) {
+         JSONObject tempObj = new JSONObject();
+         tempObj.put("name", key.split("\\.")[0]);
+         tempObj.put("attendance", map.get(key));
+         if (map.get(key)) {
+            presentArr.put(tempObj);
+         } else {
+            absentArr.put(tempObj);
+         }
+      }
+
+      resultObj.put("present", presentArr);
+      resultObj.put("absent", absentArr);
+      resultObj.put("rendered-photo", "https://facerec" +
+              ".oss-us-west-1.aliyuncs.com/" + "renderedData.jpg");
+      return resultObj.toString(2);
+   }
+
+   @RequestMapping(value = "/attendance")
+   public String setAttendance(@RequestParam String name, @RequestParam Boolean flag) {
+      Map<String, Boolean> map = sourceImageService.getResultMap();
+
+      if (map.containsKey(name)) {
+         PrintWriter printWriter = null;
+         map.put(name, flag);
+         try {
+            printWriter = new PrintWriter(new FileOutputStream(new File("data/result" +
+                    ".properties")));
+            for (String key : map.keySet()) {
+               printWriter.println(key + "=" + map.get(key));
+            }
+            printWriter.flush();
+            printWriter.close();
+         } catch (FileNotFoundException e) {
+            e.printStackTrace();
+         }
+         return "修改成功";
+      } else {
+         return "名称不存在！请先录入.";
+      }
+
    }
 }

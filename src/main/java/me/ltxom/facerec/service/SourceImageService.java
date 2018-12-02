@@ -1,5 +1,6 @@
 package me.ltxom.facerec.service;
 
+import me.ltxom.facerec.FacerecApplication;
 import me.ltxom.facerec.util.OSSClientUtil;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -18,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.util.*;
 
 @Service
@@ -71,6 +73,7 @@ public class SourceImageService {
          if (entity != null) {
             // Format and display the JSON response.
             System.out.println("REST Response:\n");
+
 
             String jsonString = EntityUtils.toString(entity).trim();
             if (jsonString.charAt(0) == '[') {
@@ -206,13 +209,13 @@ public class SourceImageService {
          HttpClient httpclient = new DefaultHttpClient();
 
          try {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("faceId", attendanceKey);
+            JSONArray candidateFacesArr = new JSONArray(candidateFaces);
+            jsonObject.put("faceIds", candidateFacesArr);
+
             URIBuilder builder = new URIBuilder(uriBase);
 
-            // Request parameters. All of them are optional.
-            builder.setParameter("faceId", attendanceKey);
-            for (int i = 0; i < candidateFaces.length; i++) {
-               builder.setParameter("faceIds[" + i + "]", String.valueOf(candidateFaces[i]));
-            }
 
             // Prepare the URI for the REST API call.
             URI uri = builder.build();
@@ -221,21 +224,24 @@ public class SourceImageService {
             // Request headers.
             request.setHeader("Content-Type", "application/json");
             request.setHeader("Ocp-Apim-Subscription-Key", apiKey);
-
+            // Request body.
+            StringEntity reqEntity = new StringEntity(jsonObject.toString());
+            request.setEntity(reqEntity);
             // Execute the REST API call and get the response entity.
             HttpResponse response = httpclient.execute(request);
             HttpEntity entity = response.getEntity();
             if (entity != null) {
                // Format and display the JSON response.
-               System.out.println("REST Response:\n");
-
                String jsonString = EntityUtils.toString(entity).trim();
                if (jsonString.charAt(0) == '[') {
                   JSONArray jsonArray = new JSONArray(jsonString);
-                  System.out.println(jsonArray.toString(2)+"\n\n\n\n\n\n\n");
+                  if (jsonArray.length() > 0)
+                     if ((Double) jsonArray.getJSONObject(0).get("confidence") > FacerecApplication.CONFIDENCE) {
+                        resultMap.put(sourceMap.get((String) jsonArray.getJSONObject(0).get(
+                                "faceId")).split("\\.")[0], true);
+                     }
                } else if (jsonString.charAt(0) == '{') {
-                  JSONObject jsonObject = new JSONObject(jsonString);
-
+                  jsonObject = new JSONObject(jsonString);
                }
             }
          } catch (UnsupportedEncodingException e) {
@@ -248,8 +254,49 @@ public class SourceImageService {
             e.printStackTrace();
          }
       }
+
+      for (String sourceFaceName : sourceMap.values()) {
+         sourceFaceName = sourceFaceName.split("\\.")[0];
+         if (!resultMap.containsKey(sourceFaceName))
+            resultMap.put(sourceFaceName, false);
+      }
+
+      PrintWriter printWriter = null;
+      try {
+         printWriter = new PrintWriter(new FileOutputStream(new File("data/result.properties")));
+         for (String key : resultMap.keySet()) {
+            printWriter.println(key + "=" + resultMap.get(key));
+         }
+         printWriter.flush();
+         printWriter.close();
+      } catch (FileNotFoundException e) {
+         e.printStackTrace();
+      }
+
       return resultMap;
    }
+
+
+   public Map<String, Boolean> getResultMap() {
+      Properties prop = new Properties();
+      InputStream in = null;
+      Map<String, Boolean> map = new HashMap<>();
+      try {
+         in = new FileInputStream(new File("data/result.properties"));
+         prop.load(in);
+         Set keyValue = prop.keySet();
+         for (Iterator it = keyValue.iterator(); it.hasNext(); ) {
+            String key = (String) it.next();
+            map.put(key, Boolean.valueOf(prop.getProperty(key)));
+         }
+      } catch (FileNotFoundException e) {
+         e.printStackTrace();
+      } catch (IOException e) {
+         e.printStackTrace();
+      }
+      return map;
+   }
+
 
    public static void main(String[] args) throws IOException {
 //      File file = new File("img/source/garyfam.jpeg");
@@ -279,6 +326,6 @@ public class SourceImageService {
 //      sourceImageService.saveSourceInfoToLocal(jsonArray, "Japan.jpg");
 
 
-      sourceImageService.checkAttendance();
+      System.out.println(sourceImageService.checkAttendance().toString());
    }
 }
