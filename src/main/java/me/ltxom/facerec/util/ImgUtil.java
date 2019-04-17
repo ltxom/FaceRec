@@ -14,12 +14,11 @@ import java.io.IOException;
 import java.util.Map;
 
 public class ImgUtil {
-   public static void generateRenderedImage(Map<String, String> sourceMap, Map<String,
-           String> attendanceMap,
+   public static void generateRenderedImage(Map<String, String> sourceMap, JSONArray attendanceArray,
                                             JSONArray jsonArray) {
 
 
-      pressText(sourceMap, attendanceMap, jsonArray, "img/checkData.jpg", "img" +
+      pressText(sourceMap, attendanceArray, jsonArray, "img/checkData.jpg", "img" +
                       "/test.jpg",
               "宋体",
               Font.BOLD, 12, Color.RED, -1, -1, 1.0f, null, "jpg");
@@ -40,8 +39,8 @@ public class ImgUtil {
     * @param alpha     透明度(0.0 -- 1.0, 0.0为完全透明，1.0为完全不透明)
     */
    public static void pressText(Map<String, String> sourceMap,
-                                Map<String, String> attendanceMap, JSONArray jsonArray,
-                                String targetImg,  String outImg,
+                                JSONArray attendanceArray, JSONArray jsonArray,
+                                String targetImg, String outImg,
                                 String fontName, int fontStyle, int fontSize, Color color,
                                 int positionX, int positionY, float alpha, Integer degree,
                                 String suffix) {
@@ -54,18 +53,25 @@ public class ImgUtil {
          } else {
             outFile = new File(outImg);
          }
-         Image image = ImageIO.read(file);
-         int width = image.getWidth(null);
-         int height = image.getHeight(null);
-         BufferedImage bufferedImage = new BufferedImage(width, height,
-                 BufferedImage.TYPE_INT_RGB);
-         Font font = new Font(fontName, fontStyle, fontSize);
-
          for (int i = 0; i < jsonArray.length(); i++) {
-            String faceId = String.valueOf(jsonArray.getJSONArray(i).getJSONObject(0).get("faceId"));
+            if (i > 0)
+               file = outFile;
+            Image image = ImageIO.read(file);
+            int width = image.getWidth(null);
+            int height = image.getHeight(null);
+            BufferedImage bufferedImage = new BufferedImage(width, height,
+                    BufferedImage.TYPE_INT_RGB);
+            Font font = new Font(fontName, fontStyle, fontSize);
+
+
+            String faceId = jsonArray.getJSONArray(i).length() != 0 ?
+                    String.valueOf(jsonArray.getJSONArray(i).getJSONObject(0).get("faceId")) : "null";
             String name = "No Record";
-            if(sourceMap.containsKey(faceId))
+            if (sourceMap.containsKey(faceId))
                name = sourceMap.get(faceId).split("\\.")[0];
+
+
+
             System.out.println(name);
             Graphics2D g = bufferedImage.createGraphics();
             Graphics g2 = image.getGraphics();
@@ -97,9 +103,8 @@ public class ImgUtil {
 
             g.drawString(name, positionX, positionY + textHeight);
             g.dispose();
+            ImageIO.write(bufferedImage, suffix, outFile);
          }
-         ImageIO.write(bufferedImage, suffix, outFile);
-
       } catch (Exception e) {
          e.printStackTrace();
       }
@@ -107,8 +112,11 @@ public class ImgUtil {
 
    public static void main(String[] args) {
       SourceImageService sourceImageService = new SourceImageService();
-      Map<String, String> sourceMap = sourceImageService.getFaceIdToNameMap(true);
-      Map<String, String> attendanceMap = sourceImageService.getFaceIdToNameMap(false);
-      generateRenderedImage(sourceMap, attendanceMap, sourceImageService.getSourceInfoByName("data/checkData.jpg.json"));
+//      Map<String, String> sourceMap = sourceImageService.getFaceIdToNameMap(true);
+//
+//      generateRenderedImage(sourceMap, sourceImageService.getSourceInfoByName("data/checkData.jpg.json") ,
+//              sourceImageService.getSourceInfoByName("data/result.json"));
+      JSONArray jsonArray = sourceImageService.getSourceImageInfo("https://facerec" +
+              ".oss-us-west-1.aliyuncs.com/IMG_6700.jpg");
    }
 }

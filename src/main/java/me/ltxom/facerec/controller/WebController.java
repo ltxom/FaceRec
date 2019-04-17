@@ -20,9 +20,9 @@ public class WebController {
    private SourceImageService sourceImageService;
 
    @PostMapping(value = "/student")
-   public String uploadStudent(@RequestParam("callback") String jsonpCallback,
-                               @RequestParam String name,
-                               @RequestParam() MultipartFile mFile) {
+   public String uploadStudent(
+           @RequestParam String name,
+           @RequestParam("mFile") MultipartFile mFile) {
       File file = sourceImageService.convertAndSave(mFile,
               "img/source/" + name + ".jpg");
       sourceImageService.saveFileToOSS(file);
@@ -30,7 +30,7 @@ public class WebController {
               ".oss-us-west-1.aliyuncs.com/" + file.getName());
       sourceImageService.saveFaceImgInfo(jsonArray, name + ".jpg", true, true);
 
-      return convertToJsonP(jsonArray.toString(2), jsonpCallback);
+      return jsonArray.toString(2);
    }
 
    @GetMapping(value = "/students")
@@ -49,15 +49,15 @@ public class WebController {
    }
 
    @PostMapping(value = "/auto-update")
-   public String checkFaces(@RequestParam("callback") String jsonpCallback,
-                            @RequestParam() MultipartFile mFile) {
+   public String checkFaces(
+           @RequestParam() MultipartFile mFile) {
       File file = sourceImageService.convertAndSave(mFile,
-              "img/" + "checkData.jpg");
+              "img/" + mFile.getOriginalFilename() + ".jpg");
       sourceImageService.saveFileToOSS(file);
 
       JSONArray jsonArray = sourceImageService.getSourceImageInfo("https://facerec" +
-              ".oss-us-west-1.aliyuncs.com/" + file.getName());
-      sourceImageService.saveFaceImgInfo(jsonArray, "checkData.jpg", false, true);
+              ".oss-us-west-1.aliyuncs.com/" + mFile.getOriginalFilename() + ".jpg");
+      sourceImageService.saveFaceImgInfo(jsonArray, mFile.getOriginalFilename()+".jpg", false, true);
 
       Map<String, Boolean> map = sourceImageService.checkAttendance();
 
@@ -82,7 +82,7 @@ public class WebController {
       resultObj.put("absent", absentArr);
       resultObj.put("rendered-photo", "https://facerec" +
               ".oss-us-west-1.aliyuncs.com/" + "renderedData.jpg");
-      return convertToJsonP(resultObj.toString(2), jsonpCallback);
+      return resultObj.toString(2);
    }
 
    @GetMapping(value = "/attendance")
